@@ -1,46 +1,47 @@
-<?
+<?php
 
-//require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
+require $_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_before.php";
+require $_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_after.php";
+include $_SERVER["DOCUMENT_ROOT"] . "/services/Asket/LaunchBuisnessProcess.php";
 
-
-require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_before.php");
-require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_after.php");
-
-include $_SERVER["DOCUMENT_ROOT"]."/services/Asket/LaunchBuisnessProcess.php";
 use Asket\LaunchBuisnessProcess as LaunchBuisnessProcess;
 
-if (isset($_GET['pp']['filter'])){
-    $arFilter = $_GET['pp']['filter'];
-}else {
-    if (isset($_GET['pp']['ID'])){
-        $arFilter=$_GET['pp']['ID'];
-    }else{
-        $arFilter =array();
-    }
-}
-if (isset($_GET['pp']['order'])){
-    $arOrder=$_GET['pp']['order'];
-}else{
-    $arOrder=array();
-}
-if (isset($_GET['pp']['fields'])){
-    $arSelectFields=$_GET['pp']['fields'];
-}else{
-    $arSelectFields=array('ID', 'TITLE', 'NAME', 'COMMENTS',  'ORIGINATOR_ID', 'ORIGIN_ID');
+// Таких название переменных, конечно, не должно быть.
+// Непонятно, что такое `pp`.
+$requestData = $_GET['pp'];
+
+$arFilter = [];
+if (isset($requestData['filter'])) {
+    $arFilter = $requestData['filter'];
+} else if (isset($requestData['ID'])) {
+    $arFilter = $requestData['ID'];
 }
 
-foreach ($_GET['pp'] as $item=>$value){
-    $arFields[$item]=$value;
+$arOrder = isset($requestData['order']) ? $requestData['order'] : [];
+
+$arSelectFields = ['ID', 'TITLE', 'NAME', 'COMMENTS', 'ORIGINATOR_ID', 'ORIGIN_ID'];
+
+if (isset($requestData['fields'])) {
+    $arSelectFields = $requestData['fields'];
 }
 
-list($module,$obj,$action)=explode('.',$_GET['p']);
-echo "<pre> ";
-if (isset($_GET['p'])){
-  CrmAction($module, $obj,$action,$arFilter,$arOrder,$arSelectFields,$arFields);
+// Очень странная конструкция.
+// Ведь в `$arFields` могут оказаться и 'filter', и 'order', и 'fields'.
+foreach ($requestData as $item => $value) {
+    $arFields[$item] = $value;
 }
 
+list($module, $obj, $action) = explode('.', $_GET['p']);
+
+// Что лежит в `p`?
+// Что будет, если `$_GET['p']` отсутствует? Просто напечатаются <pre></pre>?
+echo "<pre>";
+if (isset($_GET['p'])) {
+    CrmAction($module, $obj, $action, $arFilter, $arOrder, $arSelectFields, $arFields);
+}
 echo "</pre>";
-function CrmAction($module="",$obj="",$action="",$arFilter,$arOrder,$arSelectFields,$arFields=array()){
+
+function CrmAction($module = "", $obj = "", $action = "", $arFilter, $arOrder, $arSelectFields, $arFields = []) {
     echo " {\"result\":";
     switch ($module){
             case "workflow":
