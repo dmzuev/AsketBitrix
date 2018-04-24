@@ -1,17 +1,8 @@
 <?php
 
-include "NotifyUser.php";
-use Asket\NotifyUser as NotifyUser;
-
-include "db.php";
-use Asket\DB as DB;
-
-
-class BookingMeetingRooms
+class bookingMeetingRooms
 {
-    private $StrL = "wwwOrders";
-    private $password= "wwwOrders";
-    private $Srv = "192.168.1.3";
+
     private $BitrixRooms = array(188 => 1,    #600
         189 => 2,    #607
         187 => 3,    #405
@@ -30,37 +21,35 @@ class BookingMeetingRooms
     );
 
 
-    function __construct($Act, $Source, $ID, $arFields)
+    function __construct($Act, $Source, $Id, $arFields)
     {
-        error_reporting(E_ERROR);
-        ini_set("display_errors", 1);
+
         if ($arFields['IBLOCK_ID'] == 67) {
             switch ($Act) {
                 case "Add":
-                    $this->CreateMeetingRooms($ID, $Source);
+                    $this->createMeetingRooms($Id, $Source);
                     break;
                 case "Delete" :
-                    $this->DeleteMeetingRooms($ID, $Source);
+                    $this->deleteMeetingRooms($Id, $Source);
                     break;
                 case "Edit":
-                    $this->DeleteMeetingRooms($ID, $Source);
-                    $this->CreateMeetingRooms($ID, $Source);
+                    $this->deleteMeetingRooms($Id, $Source);
+                    $this->createMeetingRooms($Id, $Source);
                     break;
             }
         }
     }
 
-    Function DeleteMeetingRooms($ID, $Source)
+    Function deleteMeetingRooms($Id, $Source)
     {
         global $USER;
-        global $bool_Meeting;
+        global $isMeetingBooked;
         if ($Source == "iblock") {
-            $StrSQL = "Select RoomReserving_ID from inmail.dbo.RoomReserving_BitrixReserveMiting where Item_ID=$ID";
+            $StrSQL = "Select RoomReserving_ID from inmail.dbo.RoomReserving_BitrixReserveMiting where Item_ID=$Id";
         } elseif (($Source == "meeting") || ($Source == "calendar")) {
-            $StrSQL = "Select RoomReserving_ID from inmail.dbo.RoomReserving_BitrixEvent where Event_ID=$ID";
+            $StrSQL = "Select RoomReserving_ID from inmail.dbo.RoomReserving_BitrixEvent where Event_ID=$Id";
         }
-
-        $db = DB::getInstance();
+        $db = db::getInstance();
         foreach ($db->Query($StrSQL) as $row) {
             if (strlen($StrRRID) == 0) {
                 $StrRRID = $row[0];
@@ -70,25 +59,25 @@ class BookingMeetingRooms
             $db->Query("delete from  inmail.dbo.RoomReserving where id=$row[0]");
             
             if ($Source == "iblock") {
-                mssql_query("delete from inmail.dbo.RoomReserving_BitrixReserveMiting where Item_ID=$ID");
+                $db->Query("delete from inmail.dbo.RoomReserving_BitrixReserveMiting where Item_ID=$Id");
             } elseif (($Source == "meeting") || ($Source == "calendar")) {
-                mssql_query("delete from inmail.dbo.RoomReserving_BitrixEvent where EVENT_ID=$ID");
+                $db->Query("delete from inmail.dbo.RoomReserving_BitrixEvent where EVENT_ID=$Id");
             }
             $Msg = "Переговорная на сайте www освобождена";
-            if ($bool_Meeting == 1) {
-                NotifyUser::SendNotifyToUser($USER->GetId(), $Msg);
+            if ($isMeetingBooked == 1) {
+                notifyUser::sendNotifyToUser($USER->GetId(), $Msg);
             }
         }
     }
 
-    Function CreateMeetingRooms($ID, $Source)
+    Function createMeetingRooms($Id, $Source)
     {
         global $USER;
         $EventId = 0;
         if ($Source == "iblock") {
             $arSelect = "";
-            $arFilter = Array("IBLOCK_ID" => 67, "ID" => $ID);
-            $res = \CIBlockElement::GetList(Array("ID" => "ASC"), $arFilter, false, Array("nPageSize" => 100), $arSelect);
+            $arFilter = Array("IBLOCK_ID" => 67, "ID" => $Id);
+            $res = CIBlockElement::GetList(Array("ID" => "ASC"), $arFilter, false, Array("nPageSize" => 100), $arSelect);
             $ob = $res->GetNextElement();
             $arFields = $ob->GetFields();
             $PlaceID = $arFields['IBLOCK_SECTION_ID'];
@@ -96,15 +85,15 @@ class BookingMeetingRooms
             $DateTo = date_create($arFields["ACTIVE_TO"]);
         } else {
             if ($Source == "meeting") {
-                $arFilter = array('ID' => $ID);
+                $arFilter = array('ID' => $Id);
             } elseif ($Source == "calendar") {
-                $arFilter = array('EVENT_ID' => $ID);
+                $arFilter = array('EVENT_ID' => $Id);
             }
             $arSelect = array("PLACE");
-            $dbElements = \CMeeting::GetList(Array("SORT" => "ASC"), $arFilter, false, false, $arSelect);
+            $dbElements = CMeeting::GetList(Array("SORT" => "ASC"), $arFilter, false, false, $arSelect);
             $dbElements = $dbElements->Fetch();
             $PlaceID = explode("_", $dbElements['PLACE'])[2];
-            $dbElements = CCalendarEvent::GetById($ID);
+            $dbElements = CCalendarEvent::GetById($Id);
             $DateFrom = date_create($dbElements['DATE_FROM']);
             $DateTo = date_create($dbElements["DATE_TO"]);
         }
@@ -125,7 +114,7 @@ class BookingMeetingRooms
 
         //Узнаем на какое время бронируем
         $StrSQL = "select id from inmail.dbo.ReservingTime where Time >= '02.03.2010 " . date_format($DateFrom, "H") . ":" . $DateFromMin . ":00' and Time < '02.03.2010 " . date_format($DateTo, "H") . ":" . $DateToMin . ":00'";
-        $db = DB::getInstance();
+        $db = db::getInstance();
         $StrIdTime = "";
         foreach ($db->Query($StrSQL) as $row){
             if (strlen($StrIdTime) == 0) {
@@ -137,9 +126,9 @@ class BookingMeetingRooms
 
         //Узнаем кто хочет забронировать
         $StrSQL = "Select top 1 id from inmail.dbo.Stone_Users where email = '" . $USER->GetEmail() . "'";
-        $IDUser =$db->Query($StrSQL)[0][0];
+        $IdUser =$db->Query($StrSQL)[0][0];
 
-        If ((strlen($StrIdTime) > 0) && !($IDUser == null) && (strlen($PlaceID) > 0)) {
+        If ((strlen($StrIdTime) > 0) && !($IdUser == null) && (strlen($PlaceID) > 0)) {
             //Если переговорная свободная в это время
             $StrSQL = "Select id from inmail.dbo.RoomReserving where Room_ID=" . $this->BitrixRooms[$PlaceID] . " and time_Id in ($StrIdTime) and (Date >= '" . date_format($DateFrom, "m.d.y H") . ":" . $DateFromMin . ":00' and Date <  '" . date_format($DateTo, "m.d.y H") . ":" . $DateToMin . ":00')";
 
@@ -147,15 +136,15 @@ class BookingMeetingRooms
                 $StrSQL = "select id,Time from inmail.dbo.ReservingTime where Time >= '02.03.2010 " . date_format($DateFrom, "H") . ":" . $DateFromMin . ":00' and Time < '02.03.2010 " . date_format($DateTo, "H") . ":" . $DateToMin . ":00'";
                 $Q_RTime = $db->Query($StrSQL);
                 foreach ($Q_RTime as $row) {
-                    $StrSQL = "Insert into inmail.dbo.RoomReserving(Date,Room_ID,USER_ID,Time_ID) Values('" . date_format($DateFrom, "m.d.y ") . date_format(date_create($row[1]), "H:i:s") . "', " . $this->BitrixRooms[$PlaceID] . ",$IDUser, " . $row[0] . ")";
+                    $StrSQL = "Insert into inmail.dbo.RoomReserving(Date,Room_ID,USER_ID,Time_ID) Values('" . date_format($DateFrom, "m.d.y ") . date_format(date_create($row[1]), "H:i:s") . "', " . $this->BitrixRooms[$PlaceID] . ",$IdUser, " . $row[0] . ")";
                     $db->Query($StrSQL);
                     $StrSQL  = "select ident_current('inmail.dbo.RoomReserving')";
                     foreach ($db->Query($StrSQL) as $row )
                     {
                         if ($Source = 'iblock') {
-                            $db->Query("Insert into inmail.dbo.RoomReserving_BitrixReserveMiting(Item_ID,RoomReserving_ID) Values($ID," . $row[0] . ")") ;
+                            $db->Query("Insert into inmail.dbo.RoomReserving_BitrixReserveMiting(Item_ID,RoomReserving_ID) Values($Id," . $row[0] . ")") ;
                         } elseif (($Source == "meetin") || ($Source == "calendar")) {
-                            $db->Query("Insert into inmail.dbo.RoomReserving_BitrixEvent(EVENT_ID,RoomReserving_ID) Values($ID," . $row[0] . ")");
+                            $db->Query("Insert into inmail.dbo.RoomReserving_BitrixEvent(EVENT_ID,RoomReserving_ID) Values($Id," . $row[0] . ")");
                         }
                     }
                     $Msg = "Переговорная на сайте www забронирована";
@@ -166,7 +155,7 @@ class BookingMeetingRooms
         } else {
             $Msg = "Возникла ошибка при бронирование переговорной на сайте www. Возможно, перегорная уже кем-то занята на это время ";
         }
-        NotifyUser::SendNotifyToUser($USER->GetId(), $Msg);
+        notifyUser::sendNotifyToUser($USER->GetId(), $Msg);
     }
 
 }

@@ -1,12 +1,11 @@
 <?php
-namespace Asket;
 
-class NotifyUser
+class notifyUser
 {
-    function SendNotifyToUser($UserID, $Message)
+    function sendNotifyToUser($UserId, $Message)
     {
         $arMessageFields = array(
-            "TO_USER_ID" => $UserID,
+            "TO_USER_ID" => $UserId,
             "FROM_USER_ID" => 1,
             "SYSTEM" => Y,
             "NOTIFY_TYPE" => IM_NOTIFY_SYSTEM,
@@ -14,14 +13,14 @@ class NotifyUser
             "NOTIFY_TAG" => "",
             "NOTIFY_MESSAGE" => $Message,
         );
-        \CIMNotify::Add($arMessageFields);
+        CIMNotify::Add($arMessageFields);
     }
 
-    function SendEmailToUser($UserID, $Subject, $Body)
+    function sendEmailToUser($UserId, $Subject, $Body)
     {
-        $UserArray = \CUser::GetById($UserID);
+        $UserArray = CUser::GetById($UserId);
         $User = $UserArray->fetch();
-        $header = "Content-type: text/html; charset=UTF-8 \r\n";
+        $header = "From:admin_bitrix@stounxxi.ru; Content-type: text/html; charset=UTF-8 \r\n";
         mail($User["EMAIL"], $Subject, $Body, $header);
     }
 

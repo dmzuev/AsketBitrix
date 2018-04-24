@@ -1,7 +1,7 @@
 <?php
-namespace Asket;
+
 class  ExtendedStr{
-    public function Str_ToUtf($Str){
+    public function StrToUtf($Str){
         return iconv("cp1251","utf-8",$Str);
     }
 }

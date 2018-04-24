@@ -1,34 +1,26 @@
 <?php
-
-include "db.php";
-use Asket\DB as DB;
-
-include "ExtendedDataOfUser.php";
-use Asket\ExtendedDataOfUser  as ExtendedDataOfUser;
-
-class EditCRMLead
+class editCRMLead
 {
-    private $StrL = "wwwOrders";
-    private $Srv = "192.168.1.3";
 
-    const USER_FIELD_NAME_MODEL = "UF_CRM_1518168442";
-    const USER_FIELD_TYPE_MODEL = "UF_CRM_1518535467";
+    const USER_FIELD_NAME_MODEL = "UF_CRM_1518178150";
+    const USER_FIELD_TYPE_MODEL = "UF_CRM_1518178129";
     const USER_FIELD_INN = "UF_CRM_1480496082";
     const DEFAULT_MANAGER = 36;
-    const PROPERTY_NAME_MODEL = "PROPERTY_366";
-    const PROPERTY_TYPE_MODEL = "PROPERTY_364";
-    const PROPERTY_MANAGER = "PROPERTY_365";
-    const IBLOCK_ID_MODEL_FROM_MANAGER = 118;
+    const PROPERTY_NAME_MODEL = "PROPERTY_337";
+    const PROPERTY_TYPE_MODEL = "PROPERTY_338";
+    const PROPERTY_MANAGER = "PROPERTY_333";
+    const IBLOCK_ID_MODEL_FROM_MANAGER = 112;
 
     function __construct($arFields)
     {
-        $this->SetManagerOnLeadAdd($arFields);
+
+        $this->setManagerOnLeadAdd($arFields);
     }
 
-    function SetManagerOnLeadAdd($arFields)
+    function setManagerOnLeadAdd($arFields)
     {
-        $db = DB::getInstance();
-        $ExtendedDataOfUser = new ExtendedDataOfUser();
+        $db = db::getInstance();
+        $ExtendedDataOfUser = new extendedDataOfUser();
         $Model = $arFields[self::USER_FIELD_NAME_MODEL];
         $Type = $arFields[self::USER_FIELD_TYPE_MODEL];
         $INN = preg_quote($arFields[self::USER_FIELD_INN]);
@@ -43,59 +35,60 @@ class EditCRMLead
                    from st.dbo.ДоговораЛ as д left join  st.dbo.Предприятия as п on д.КодЛизингополучателя =п.код
                                               left join st.dbo.Фамилии as Ф On Д.Отв = ф.КодГруппа
                     where  (Статус= 'Действует' or Статус= 'Закрыт') and  ";
-        $UserID = 0;
+        $UserId = 0;
         if (strlen($INN) > 0) {
             $StrSQL .= "П.ИНН = '$INN' and (Статус= 'Действует' or Статус= 'Закрыт') order by Д.НомерЧисло desc ";
-            $UserID = $ExtendedDataOfUser->GetBitrixUserIDByFio($db->Query($StrSQL)[0][0]);
-            if ($UserID != 0) {
+            $UserId = $ExtendedDataOfUser->getBitrixUserIDByFullname($db->Query($StrSQL)[0][0]);
+            if ($UserId != 0) {
                 $arFields['COMMENTS'] .= " Ответственный назначен автоматически по ИНН";
             }
         }
-        if (($UserID == 0) && (strlen($CompanyName) > 0)) {
+        if (($UserId == 0) && (strlen($CompanyName) > 0)) {
             $StrSQL .= "(replace(replace(replace(replace(replace(replace(replace(П.Наименование,'ООО',''),'ОАО',''),'ЗАО',''),'ПАО',''),'АО',''),'\"',''),'''','') like '%$CompanyName%' or
                         replace(replace(replace(replace(replace(replace(replace(п.ПолноеНаименование,'ООО',''),'ОАО',''),'ЗАО',''),'ПАО',''),'АО',''),'\"',''),'''','') like '%$CompanyName%')
                         group by Ф.ФИО
                         order by max(д.НомерЧисло) desc";
-            $UserID =$ExtendedDataOfUser->GetBitrixUserIDByFio($db->Query($StrSQL)[0][0]);
-            if ($UserID != 0) {
+            $UserId =$ExtendedDataOfUser->getBitrixUserIDByFullname($db->Query($StrSQL)[0][0]);
+            if ($UserId != 0) {
                 $arFields['COMMENTS'] .= " Ответственный назначен автоматически по названию компании";
             }
         }
 
-        if (($UserID == 0) && (strlen($PhoneNumber) > 0)) {
+        if (($UserId == 0) && (strlen($PhoneNumber) > 0)) {
             $StrSQL .= " КодЛизингополучателя in(  select КодПредпр from stmain.dbo.Телефоны where replace(replace(replace(replace(replace(Телефоны.Сотовый,'-',''),')',''),'(',''),'+',''),' ','') like '%$PhoneNumber%' or
                                                                                                            replace(replace(replace(replace(replace(Телефоны.Рабочий,'-',''),')',''),'(',''),'+',''),' ','') like '%$PhoneNumber%' or
                                                                                                            replace(replace(replace(replace(replace(Телефоны.Домашний ,'-',''),')',''),'(',''),'+',''),' ','') like '%$PhoneNumber%' or
                                                                                                            replace(replace(replace(replace(replace(Телефоны.Факс ,'-',''),')',''),'(',''),'+',''),' ','') like '%$PhoneNumber%') 
                                                    order by Д.НомерЧисло desc";
-            $UserID =$ExtendedDataOfUser->GetBitrixUserIDByFio($db->Query($StrSQL)[0][0]);
-            if ($UserID != 0) {
+            $UserId =$ExtendedDataOfUser->getBitrixUserIDByFullname($db->Query($StrSQL)[0][0]);
+            if ($UserId != 0) {
                 $arFields['COMMENTS'] .= " Ответственный назначен автоматически по номеру телефона";
             }
         }
-        if (($UserID == 0) && (strlen($email) > 0)) {
+        if (($UserId == 0) && (strlen($email) > 0)) {
             $StrSQL .= "  КодЛизингополучателя in(  select КодПредпр from stmain.dbo.Телефоны where  Телефоны.ЭлПочта like '%$email%') order by Д.НомерЧисло desc";
-            $UserID = $ExtendedDataOfUser->GetBitrixUserIDByFio($db->Query($StrSQL)[0][0]);
-            if ($UserID != 0) {
+            $UserId = $ExtendedDataOfUser->getBitrixUserIDByFullname($db->Query($StrSQL)[0][0]);
+            if ($UserId != 0) {
                 $arFields['COMMENTS'] .= " Ответственный назначен автоматически по адресу электронной почты";
             }
         }
-        if (($UserID == 0) && (strlen($Model) > 0 && strlen($Type) > 0)) {
+        if (($UserId == 0) && (strlen($Model) > 0 && strlen($Type) > 0)) {
             $ArrSelect = Array("ID", "IBLOCK_ID", self::PROPERTY_MANAGER);
             $ArrFilter = Array("IBLOCK_ID" => self::IBLOCK_ID_MODEL_FROM_MANAGER, self::PROPERTY_NAME_MODEL => $Model, self::PROPERTY_TYPE_MODEL => $Type);
+
             $Lst = CIBlockElement::GetList(array(), $ArrFilter, false, Array("nPageSize" => 1), $ArrSelect);
             while ($ob = $Lst->GetNextElement()) {
-                $UserID = $ob->GetFields()[self::PROPERTY_MANAGER . "_VALUE"];
+                $UserId = $ob->GetFields()[self::PROPERTY_MANAGER . "_VALUE"];
             }
-            if ($UserID != 0) {
+            if ($UserId != 0) {
                 $arFields['COMMENTS'] .= " Ответственный назначен автоматически по марке. ";
             }
         }
-        if ($UserID == 0) {
-            $UserID = self::DEFAULT_MANAGER;
+        if ($UserId == 0) {
+            $UserId = self::DEFAULT_MANAGER;
             $arFields['COMMENTS'] .= " Произошла ошибка при распознавании лида.";
         }
-        $arFields['ASSIGNED_BY_ID'] = $UserID;
+        $arFields['ASSIGNED_BY_ID'] = $UserId;
         $Lead = new CCrmLead;
         $Lead->Update($arFields["ID"], $arFields, true, true, array());
     }

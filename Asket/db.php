@@ -1,16 +1,10 @@
 <?php
-namespace  Asket;
-
-include "ExtendedStr.php";
-use Asket\ExtendedStr  as ExtendedStr;
-
-use PDO as PDO;
-class DB{
+class db{
     private $dbst = "st";
     private $dbmain = "stmain";
     private $user = "wwwOrders";
     private $password= "wwwOrders";
-    private $host = "192.168.1.3";
+    private $host = "192.168.0.200:6000";
 
     private  $CnMain;
     private static $instance = null;
@@ -18,6 +12,7 @@ class DB{
     private function __wakeup() {}
 
     public static function getInstance() {
+
         if (!isset(self::$instance)) {
             self::$instance = new self();
         }
@@ -28,16 +23,17 @@ class DB{
     {
         try {
             $this->CnMain = new PDO ("dblib:host=$this->host;dbname=$this->dbmain;charset=cp1251", "$this->user", "$this->password");
+            //$this->CnMain = mssql_connect ($this->host, $this->user, $this->password) or die(mssql_get_last_message());
             if ( $this->CnMain) {
                 return true;
             }else{
                 $this->CnMain=null;
+                echo "Ошибка авторизации пользователя $this->user. \n Описание ошибки:  $this->TxtException ";
                 return false;
-                die("Ошибка авторизации пользователя $login. \n Описание ошибки:  $this->TxtException ");
             }
         } catch (PDOException $e) {
+            echo "Ошибка подключения к базе данных. Описание ошибки:  $e \n";
             return false;
-            die("Ошибка подключения к базе данных. Описание ошибки:  $e \n");
         }
     }
 
@@ -49,23 +45,32 @@ class DB{
                 $this->user=$row['UserName'];
                 $this->password =  $row['psw'] . substr($row['salt'],3,5);
                 $this->CnMain = new PDO ("dblib:host=$this->host;dbname=$this->dbmain;charset=cp1251", $this->user,$this->password);
+                //$this->CnMain= mssql_connect ($this->Srv, $this->user,$this->password) or die(mssql_get_last_message());
                 return true;
-                exit;
             }
             $this->TxtException.="Пользователь с логином $login не найден.";
             return false;
-            exit;
         } catch (PDOException $e) {
-            die("Ошибка авторизации. \n Описание ошибки: $e ");
+            echo "Ошибка авторизации. \n Описание ошибки: $e ";
             return false;
         }
     }
 
     private function PdoQuery_ToArray($InputArr){
-        $StrFunction = new ExtendedStr();
+        $StrFunction = new extendedStr();
         foreach ($InputArr as $key =>$row){
             foreach ( $row as $key=>$val) {
-                $RetRow[$StrFunction->Str_ToUtf($key)] =$StrFunction->Str_ToUtf($val);
+                $RetRow[$StrFunction->strToUTF($key)] =$StrFunction->strToUTF($val);
+            }
+            $RetArr[]=$RetRow;
+        }
+        return $RetArr;
+    }
+    private  function MsSQLQuery_ToArray($Query){
+        $StrFunction = new extendedStr();
+        while ($rows = mssql_fetch_array($Query)) {
+            foreach ($rows as $key =>$row){
+                $RetRow[$StrFunction->strToUtf($key)] =$StrFunction->strToUTF($row);
             }
             $RetArr[]=$RetRow;
         }
@@ -76,9 +81,12 @@ class DB{
         try {
             $Query=$this->CnMain->query(iconv("utf-8", "cp1251",$StrSQL));
             $RetArr = DB::PdoQuery_ToArray($Query);
+            //$Query = mssql_query($StrSQL,$this->CnMain);
+            //$RetArr= DB::MsSQLQuery_ToArray($Query);
             return $RetArr;
         }catch (PDOException $e){
-            die("Ошибка выполнения запроса: $StrSQL .  \n Описание ошибки: $e ");
+            echo "Ошибка выполнения запроса: $StrSQL .  \n Описание ошибки: $e ";
+            return false;
         }
     }
 
